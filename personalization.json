@@ -1,0 +1,8 @@
+{
+  "user_name": "kundan",
+  "bot_name": "ChatBot",
+  "bot_personality": "Professional",
+  "system_prompt": "You are a professional and formal AI assistant. Provide accurate, well-structured responses.",
+  "ollama_host": "localhost",
+  "ollama_port": "11434"
+}
