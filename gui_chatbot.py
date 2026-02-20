@@ -6,7 +6,7 @@ import json
 from typing import Optional
 from datetime import datetime
 import os
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 
 class GUIChatbot(tk.Tk):
     def __init__(self):
@@ -52,7 +52,8 @@ class GUIChatbot(tk.Tk):
         self.languages = ["English", "Hindi", "Tamil", "Telugu", "Kannada"]
         self.use_streaming = True
         self.recording = False  # Voice input state
-        self.translator = Translator()
+        
+        # We will instantiate GoogleTranslator when needed to handle different source/dest languages
         
         # Personalization settings
         self.user_name = "User"
@@ -888,8 +889,8 @@ Double-Click    → Select word
             original_user_msg = user_message
             if self.current_language != "English":
                 try:
-                    translated = self.translator.translate(user_message, dest='en')
-                    user_message = translated.text
+                    translator = GoogleTranslator(source='auto', target='en')
+                    user_message = translator.translate(user_message)
                 except Exception as e:
                     print(f"Translation error: {e}")
             
@@ -957,8 +958,8 @@ Double-Click    → Select word
                             # Lang code dictionary
                             lang_codes = {"Hindi": "hi", "Tamil": "ta", "Telugu": "te", "Kannada": "kn"}
                             dest_lang = lang_codes.get(self.current_language, "en")
-                            translated_response = self.translator.translate(full_response_en, dest=dest_lang)
-                            final_output = translated_response.text
+                            translator = GoogleTranslator(source='en', target=dest_lang)
+                            final_output = translator.translate(full_response_en)
                         except Exception as e:
                             print(f"Translation response error: {e}")
                             final_output = full_response_en
@@ -985,8 +986,8 @@ Double-Click    → Select word
                         try:
                             lang_codes = {"Hindi": "hi", "Tamil": "ta", "Telugu": "te", "Kannada": "kn"}
                             dest_lang = lang_codes.get(self.current_language, "en")
-                            translated_response = self.translator.translate(raw_response, dest=dest_lang)
-                            final_output = translated_response.text
+                            translator = GoogleTranslator(source='en', target=dest_lang)
+                            final_output = translator.translate(raw_response)
                         except Exception as e:
                             print(f"Translation error: {e}")
                     
