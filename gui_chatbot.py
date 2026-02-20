@@ -6,6 +6,7 @@ import json
 from typing import Optional
 from datetime import datetime
 import os
+from googletrans import Translator
 
 class GUIChatbot(tk.Tk):
     def __init__(self):
@@ -51,6 +52,7 @@ class GUIChatbot(tk.Tk):
         self.languages = ["English", "Hindi", "Tamil", "Telugu", "Kannada"]
         self.use_streaming = True
         self.recording = False  # Voice input state
+        self.translator = Translator()
         
         # Personalization settings
         self.user_name = "User"
@@ -882,9 +884,17 @@ Double-Click    → Select word
             self.stop_response = False  # Reset stop flag
             self.conversation_history.append({"role": "user", "content": user_message})
             
+            # Translate to English if needed
+            original_user_msg = user_message
+            if self.current_language != "English":
+                try:
+                    translated = self.translator.translate(user_message, dest='en')
+                    user_message = translated.text
+                except Exception as e:
+                    print(f"Translation error: {e}")
+            
             context = self.build_context()
-            language_instruction = f"Please respond in {self.current_language}. "
-            full_prompt = language_instruction + context + user_message
+            full_prompt = context + user_message
             
             # Remove loading message for streaming
             if self.streaming_var.get():
@@ -903,35 +913,89 @@ Double-Click    → Select word
             
             if response.status_code == 200:
                 if self.streaming_var.get():
-                    # Streaming response
+                    # Streaming response -> We buffer the response if non-English to translate whole sentences, or output directly
                     self.chat_display.config(state=tk.NORMAL)
-                    full_response = ""
-                    for line in response.iter_lines():
-                        if self.stop_response:  # Check if stop was requested
-                            self.status_bar.config(text="⏹️ Response stopped by user")
-                            break
-                        if line:
-                            data = json.loads(line)
-                            chunk = data.get("response", "")
-                            full_response += chunk
-                            self.chat_display.insert(tk.END, chunk)
-                            self.chat_display.see(tk.END)
-                            self.chat_display.update()
+                    full_response_en = ""
+                    
+                    if self.current_language == "English":
+                        for line in response.iter_lines():
+                            if self.stop_response:  # Check if stop was requested
+                                self.status_bar.config(text="⏹️ Response stopped by user")
+                                break
+                            if line:
+                                try:
+                                    data = json.loads(line)
+                                    chunk = data.get("response", "")
+                                    full_response_en += chunk
+                                    self.chat_display.insert(tk.END, chunk)
+                                    self.chat_display.see(tk.END)
+                                    self.chat_display.update()
+                                except json.JSONDecodeError:
+                                    pass
+                    else:
+                        # For other languages, we shouldn't stream character by character because translation needs context.
+                        # We'll buffer the whole response, then translate it.
+                        self.status_bar.config(text="🔄 Generating & Translating...")
+                        self.chat_display.insert(tk.END, "Translating... ", "loading")
+                        self.chat_display.update()
+                        for line in response.iter_lines():
+                            if self.stop_response:  # Check if stop was requested
+                                self.status_bar.config(text="⏹️ Response stopped by user")
+                                break
+                            if line:
+                                try:
+                                    data = json.loads(line)
+                                    chunk = data.get("response", "")
+                                    full_response_en += chunk
+                                except json.JSONDecodeError:
+                                    pass
+                                    
+                        # Remove loading message
+                        self.chat_display.delete("end-15c", tk.END)
+                        
+                        try:
+                            # Lang code dictionary
+                            lang_codes = {"Hindi": "hi", "Tamil": "ta", "Telugu": "te", "Kannada": "kn"}
+                            dest_lang = lang_codes.get(self.current_language, "en")
+                            translated_response = self.translator.translate(full_response_en, dest=dest_lang)
+                            final_output = translated_response.text
+                        except Exception as e:
+                            print(f"Translation response error: {e}")
+                            final_output = full_response_en
+                            
+                        self.chat_display.insert(tk.END, final_output)
+                        self.chat_display.see(tk.END)
+                        self.chat_display.update()
+
                     self.chat_display.insert(tk.END, "\n\n")
                     self.chat_display.config(state=tk.DISABLED)
                     
                     # Add label at beginning
                     self.chat_display.config(state=tk.NORMAL)
-                    self.chat_display.insert("end-" + str(len(full_response) + 2) + "c", f"{self.bot_name}: ", "bot")
+                    output_length = len(full_response_en) if self.current_language == "English" else len(final_output)
+                    self.chat_display.insert("end-" + str(output_length + 2) + "c", f"{self.bot_name}: ", "bot")
                     self.chat_display.config(state=tk.DISABLED)
                 else:
                     # Non-streaming response
                     data = response.json()
-                    full_response = data.get("response", "")
-                    self.add_message(full_response, "bot")
+                    raw_response = data.get("response", "")
+                    
+                    final_output = raw_response
+                    if self.current_language != "English":
+                        try:
+                            lang_codes = {"Hindi": "hi", "Tamil": "ta", "Telugu": "te", "Kannada": "kn"}
+                            dest_lang = lang_codes.get(self.current_language, "en")
+                            translated_response = self.translator.translate(raw_response, dest=dest_lang)
+                            final_output = translated_response.text
+                        except Exception as e:
+                            print(f"Translation error: {e}")
+                    
+                    self.add_message(final_output, "bot")
+                    full_response_en = raw_response
                 
-                if full_response:  # Only add to history if response has content
-                    self.conversation_history.append({"role": "assistant", "content": full_response})
+                # Store original English response in history for better multi-turn context
+                if full_response_en:  
+                    self.conversation_history.append({"role": "assistant", "content": full_response_en})
                 if not self.stop_response:
                     self.status_bar.config(text="✅ Response received")
             else:
@@ -948,6 +1012,7 @@ Double-Click    → Select word
             self.is_loading = False
             self.send_btn.config(state=tk.NORMAL)
             self.stop_response = False  # Reset flag
+
     
     def build_context(self) -> str:
         """Build context from conversation history and file"""
