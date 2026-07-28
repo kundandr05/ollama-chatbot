@@ -5,11 +5,13 @@ from typing import Optional
 
 app = Flask(__name__)
 
+import os
+
 class OllamaChatbot:
-    def __init__(self, model: str = "llama2", base_url: str = "http://localhost:11434"):
+    def __init__(self, model: str = "llama2", base_url: str = None):
         self.model = model
-        self.base_url = base_url
-        self.api_endpoint = f"{base_url}/api/generate"
+        self.base_url = base_url or os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+        self.api_endpoint = f"{self.base_url}/api/generate"
         self.conversation_history = []
     
     def check_connection(self) -> bool:
