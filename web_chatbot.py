@@ -12,6 +12,7 @@ class OllamaChatbot:
         self.model = model
         self.base_url = base_url or os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
         self.api_endpoint = f"{self.base_url}/api/generate"
+        self.system_prompt = ""
         self.conversation_history = []
     
     def check_connection(self) -> bool:
@@ -44,9 +45,14 @@ class OllamaChatbot:
         context = self._build_context()
         
         try:
+            # Build full prompt including system message if set
+            full_prompt = context + user_message
+            if self.system_prompt:
+                full_prompt = f"System: {self.system_prompt}\n\n{full_prompt}"
+                
             payload = {
                 "model": self.model,
-                "prompt": context + user_message,
+                "prompt": full_prompt,
                 "stream": False,
                 "temperature": 0.7,
             }
@@ -136,6 +142,14 @@ def set_model():
     model = data.get('model', 'llama2')
     chatbot.model = model
     return jsonify({'status': 'model set', 'model': model})
+
+@app.route('/api/set-system', methods=['POST'])
+def set_system():
+    """Set the system persona prompt."""
+    data = request.json
+    system_prompt = data.get('prompt', '').strip()
+    chatbot.system_prompt = system_prompt
+    return jsonify({'status': 'system prompt set', 'prompt': system_prompt})
 
 if __name__ == '__main__':
     print("Starting Ollama Web Chatbot...")

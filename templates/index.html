@@ -4,7 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ollama Web Chatbot</title>
+    
+    <!-- Markdown and Syntax Highlighting -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
     <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --container-bg: #ffffff;
+            --text-color: #333333;
+            --bot-msg-bg: #f0f0f0;
+            --user-msg-bg: #667eea;
+            --user-msg-text: #ffffff;
+            --border-color: #e0e0e0;
+            --input-bg: #ffffff;
+            --input-border: #dddddd;
+            --button-hover: #5568d3;
+        }
+
+        body.dark-mode {
+            --bg-gradient: linear-gradient(135deg, #1f1c2c 0%, #928dab 100%);
+            --container-bg: #1e1e2e;
+            --text-color: #e0e0e0;
+            --bot-msg-bg: #2d2d3f;
+            --user-msg-bg: #7b61ff;
+            --user-msg-text: #ffffff;
+            --border-color: #333344;
+            --input-bg: #2d2d3f;
+            --input-border: #444455;
+            --button-hover: #674cdd;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -13,38 +45,48 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg-gradient);
+            color: var(--text-color);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 10px;
+            transition: background 0.3s ease;
         }
 
         .container {
             width: 100%;
             max-width: 900px;
-            background: white;
+            background: var(--container-bg);
             border-radius: 12px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
             height: 90vh;
             max-height: 800px;
+            transition: background 0.3s ease;
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg-gradient);
             color: white;
             padding: 20px;
             border-radius: 12px 12px 0 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: background 0.3s ease;
         }
 
         .header h1 {
             font-size: 24px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
 
         .status {
@@ -72,65 +114,179 @@
             50% { opacity: 0.5; }
         }
 
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .settings-bar {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .settings-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .settings-bar label {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .settings-bar select, .settings-bar input {
+            padding: 8px 12px;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            font-size: 14px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            transition: all 0.3s;
+        }
+        
+        .persona-input {
+            flex-grow: 1;
+            min-width: 250px;
+        }
+
         .chat-container {
             flex: 1;
             overflow-y: auto;
             padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 15px;
         }
 
         .message {
             display: flex;
             animation: slideIn 0.3s ease;
+            position: relative;
         }
 
         @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .user-message {
             justify-content: flex-end;
         }
-
-        .message-content {
-            max-width: 70%;
-            padding: 12px 16px;
-            border-radius: 12px;
-            word-wrap: break-word;
-            line-height: 1.5;
-        }
-
-        .user-message .message-content {
-            background: #667eea;
-            color: white;
-            border-radius: 18px 18px 4px 18px;
-        }
-
-        .bot-message .message-content {
-            background: #f0f0f0;
-            color: #333;
-            border-radius: 18px 18px 18px 4px;
-        }
-
+        
         .bot-message {
             justify-content: flex-start;
         }
 
+        .message-content {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            word-wrap: break-word;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .user-message .message-content {
+            background: var(--user-msg-bg);
+            color: var(--user-msg-text);
+            border-radius: 18px 18px 4px 18px;
+        }
+
+        .bot-message .message-content {
+            background: var(--bot-msg-bg);
+            color: var(--text-color);
+            border-radius: 18px 18px 18px 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        /* Markdown Styles */
+        .message-content p { margin-bottom: 0.8em; }
+        .message-content p:last-child { margin-bottom: 0; }
+        .message-content pre {
+            background: #1e1e1e !important;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 10px 0;
+            position: relative;
+        }
+        .message-content code {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+        }
+        /* Inline code */
+        .message-content :not(pre) > code {
+            background: rgba(128, 128, 128, 0.2);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        
+        .message-content ul, .message-content ol {
+            margin-left: 20px;
+            margin-bottom: 10px;
+        }
+
+        /* Copy Button */
+        .copy-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        pre:hover .copy-btn, .message-content:hover .msg-copy-btn {
+            opacity: 1;
+        }
+        
+        .msg-copy-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: var(--bg-gradient);
+            color: white;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            opacity: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
         .input-container {
-            border-top: 1px solid #e0e0e0;
+            border-top: 1px solid var(--border-color);
             padding: 16px 20px;
             display: flex;
             gap: 10px;
             align-items: flex-end;
+            background: var(--container-bg);
+            border-radius: 0 0 12px 12px;
         }
 
         .input-wrapper {
@@ -142,13 +298,15 @@
         .input-field {
             flex: 1;
             padding: 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--input-border);
             border-radius: 8px;
             font-size: 14px;
             font-family: inherit;
             resize: none;
             max-height: 100px;
             min-height: 44px;
+            background: var(--input-bg);
+            color: var(--text-color);
         }
 
         .input-field:focus {
@@ -159,7 +317,7 @@
 
         button {
             padding: 12px 24px;
-            background: #667eea;
+            background: var(--user-msg-bg);
             color: white;
             border: none;
             border-radius: 8px;
@@ -171,9 +329,9 @@
         }
 
         button:hover {
-            background: #5568d3;
+            background: var(--button-hover);
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
         button:active {
@@ -184,6 +342,7 @@
             background: #ccc;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
         }
 
         .clear-btn {
@@ -196,65 +355,43 @@
             background: #ff5252;
         }
 
-        .model-selector {
-            padding: 16px 20px;
-            border-top: 1px solid #e0e0e0;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .model-selector label {
-            font-weight: 600;
-            color: #333;
-        }
-
-        .model-selector select {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        .loading {
+        /* Typing Animation */
+        .typing-indicator {
             display: flex;
             align-items: center;
-            gap: 8px;
-            color: #999;
-            font-size: 14px;
+            gap: 5px;
+            padding: 15px 20px;
+            background: var(--bot-msg-bg);
+            border-radius: 18px 18px 18px 4px;
+            width: fit-content;
         }
 
-        .loading::after {
-            content: '';
-            width: 12px;
-            height: 12px;
-            border: 2px solid #667eea;
-            border-top-color: transparent;
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #888;
             border-radius: 50%;
-            animation: spin 0.6s linear infinite;
+            animation: typingBounce 1.4s infinite ease-in-out both;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
         }
 
         .error-message {
-            background: #ffe0e0;
-            color: #d32f2f;
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 14px;
+            background: #ffe0e0 !important;
+            color: #d32f2f !important;
         }
 
         @media (max-width: 600px) {
-            .message-content {
-                max-width: 85%;
-            }
-            
-            .header h1 {
-                font-size: 18px;
-            }
+            .message-content { max-width: 90%; }
+            .header h1 { font-size: 18px; }
+            .settings-bar { flex-direction: column; align-items: stretch; }
+            .persona-input { min-width: auto; }
         }
     </style>
 </head>
@@ -262,17 +399,28 @@
     <div class="container">
         <div class="header">
             <h1>🤖 Ollama Chatbot</h1>
-            <div class="status">
-                <span class="status-dot" id="statusDot"></span>
-                <span id="statusText">Connecting...</span>
+            <div class="header-actions">
+                <div class="status">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">Connecting...</span>
+                </div>
+                <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙 Dark</button>
             </div>
         </div>
 
-        <div class="model-selector">
-            <label for="modelSelect">Model:</label>
-            <select id="modelSelect">
-                <option value="llama2">Loading...</option>
-            </select>
+        <div class="settings-bar">
+            <div class="settings-group">
+                <label for="modelSelect">Model:</label>
+                <select id="modelSelect">
+                    <option value="llama2">Loading...</option>
+                </select>
+            </div>
+            
+            <div class="settings-group" style="flex-grow: 1;">
+                <label for="systemPrompt">Persona:</label>
+                <input type="text" id="systemPrompt" class="persona-input" placeholder="e.g., You are a helpful AI expert..." onchange="updateSystemPrompt()">
+            </div>
+            
             <button class="clear-btn" onclick="clearChat()">Clear Chat</button>
         </div>
 
@@ -298,14 +446,37 @@
     </div>
 
     <script>
+        // Initialize marked.js with highlight.js
+        marked.setOptions({
+            highlight: function(code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            },
+            breaks: true
+        });
+
         const chatContainer = document.getElementById('chatContainer');
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
         const statusDot = document.getElementById('statusDot');
         const statusText = document.getElementById('statusText');
         const modelSelect = document.getElementById('modelSelect');
-
+        const systemPrompt = document.getElementById('systemPrompt');
+        
         let isLoading = false;
+
+        // Dark Mode Logic
+        function toggleTheme() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            document.getElementById('themeBtn').textContent = isDark ? '☀️ Light' : '🌙 Dark';
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        }
+
+        // Check theme on load
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            document.getElementById('themeBtn').textContent = '☀️ Light';
+        }
 
         // Check status on load
         window.addEventListener('load', () => {
@@ -327,6 +498,19 @@
             }
         });
 
+        async function updateSystemPrompt() {
+            const prompt = systemPrompt.value.trim();
+            try {
+                await fetch('/api/set-system', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+            } catch (error) {
+                console.error('Error setting persona:', error);
+            }
+        }
+
         async function checkStatus() {
             try {
                 const response = await fetch('/api/status');
@@ -334,7 +518,7 @@
                 
                 if (data.connected) {
                     statusDot.classList.add('connected');
-                    statusText.textContent = `✓ Connected • Model: ${data.current_model}`;
+                    statusText.textContent = \`✓ Connected • \${data.current_model}\`;
                 } else {
                     statusDot.classList.remove('connected');
                     statusText.textContent = '✗ Disconnected - Check Ollama';
@@ -386,17 +570,22 @@
             
             if (!message || isLoading) return;
 
-            // Add user message to chat
             addMessage(message, 'user');
             messageInput.value = '';
             messageInput.style.height = 'auto';
             isLoading = true;
             sendBtn.disabled = true;
 
-            // Show loading indicator
+            // Show bounce animation
             const loadingDiv = document.createElement('div');
             loadingDiv.className = 'message bot-message';
-            loadingDiv.innerHTML = '<div class="loading">AI is thinking...</div>';
+            loadingDiv.innerHTML = \`
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            \`;
             chatContainer.appendChild(loadingDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
@@ -408,8 +597,6 @@
                 });
 
                 const data = await response.json();
-                
-                // Remove loading indicator
                 loadingDiv.remove();
 
                 if (response.ok) {
@@ -427,9 +614,20 @@
             }
         }
 
+        // Copy functionality
+        function copyText(button, text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.innerHTML;
+                button.innerHTML = '✓ Copied!';
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                }, 2000);
+            });
+        }
+
         function addMessage(text, sender) {
             const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${sender}-message`;
+            messageDiv.className = \`message \${sender}-message\`;
             
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
@@ -438,6 +636,28 @@
                 contentDiv.className = 'message-content error-message';
                 contentDiv.textContent = text;
                 messageDiv.className = 'message bot-message';
+            } else if (sender === 'bot') {
+                // Parse markdown
+                contentDiv.innerHTML = marked.parse(text);
+                
+                // Add copy button to the entire message
+                const msgCopyBtn = document.createElement('button');
+                msgCopyBtn.className = 'msg-copy-btn';
+                msgCopyBtn.innerHTML = '📋';
+                msgCopyBtn.title = "Copy message";
+                msgCopyBtn.onclick = () => copyText(msgCopyBtn, text);
+                contentDiv.appendChild(msgCopyBtn);
+
+                // Add copy buttons to code blocks
+                const codeBlocks = contentDiv.querySelectorAll('pre');
+                codeBlocks.forEach(block => {
+                    const code = block.querySelector('code').innerText;
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'copy-btn';
+                    copyBtn.innerHTML = 'Copy Code';
+                    copyBtn.onclick = () => copyText(copyBtn, code);
+                    block.appendChild(copyBtn);
+                });
             } else {
                 contentDiv.textContent = text;
             }
@@ -449,18 +669,17 @@
 
         async function clearChat() {
             if (confirm('Clear all messages?')) {
-                chatContainer.innerHTML = `
+                chatContainer.innerHTML = \`
                     <div class="message bot-message">
                         <div class="message-content">
                             👋 Chat cleared! How can I help you now?
                         </div>
                     </div>
-                `;
+                \`;
                 await fetch('/api/clear', { method: 'POST' });
             }
         }
 
-        // Auto-check status periodically
         setInterval(checkStatus, 5000);
     </script>
 </body>
