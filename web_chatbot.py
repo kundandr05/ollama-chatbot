@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify
 import requests
 import json
 from typing import Optional
-from duckduckgo_search import DDGS
+from googlesearch import search
 
 app = Flask(__name__)
 
@@ -49,11 +49,11 @@ class OllamaChatbot:
         web_context = ""
         if use_web_search:
             try:
-                results = DDGS().text(user_message, max_results=3)
+                results = search(user_message, num_results=3, advanced=True)
                 if results:
                     web_context = "Here is some live information from the web to help you answer:\n"
                     for r in results:
-                        web_context += f"- {r.get('title', '')}: {r.get('body', '')}\n"
+                        web_context += f"- {r.title}: {r.description}\n"
                     web_context += "\n"
             except Exception as e:
                 print(f"Web search error: {e}")

@@ -1,4 +1,4 @@
 requests==2.31.0
 python-dotenv==1.0.0
 flask==3.0.0
-duckduckgo-search==6.2.1
+googlesearch-python==1.2.3
