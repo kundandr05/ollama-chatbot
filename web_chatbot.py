@@ -17,7 +17,8 @@ class OllamaChatbot:
     def check_connection(self) -> bool:
         """Check if Ollama is running."""
         try:
-            response = requests.get(f"{self.base_url}/api/tags", timeout=5)
+            headers = {"ngrok-skip-browser-warning": "true"}
+            response = requests.get(f"{self.base_url}/api/tags", headers=headers, timeout=5)
             return response.status_code == 200
         except:
             return False
@@ -25,7 +26,8 @@ class OllamaChatbot:
     def get_available_models(self) -> list:
         """Get list of available models."""
         try:
-            response = requests.get(f"{self.base_url}/api/tags")
+            headers = {"ngrok-skip-browser-warning": "true"}
+            response = requests.get(f"{self.base_url}/api/tags", headers=headers)
             if response.status_code == 200:
                 data = response.json()
                 if "models" in data:
@@ -49,7 +51,8 @@ class OllamaChatbot:
                 "temperature": 0.7,
             }
             
-            response = requests.post(self.api_endpoint, json=payload, timeout=120)
+            headers = {"ngrok-skip-browser-warning": "true"}
+            response = requests.post(self.api_endpoint, json=payload, headers=headers, timeout=120)
             
             if response.status_code == 200:
                 data = response.json()
