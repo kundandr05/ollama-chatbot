@@ -58,7 +58,7 @@ class OllamaChatbot:
                 data = response.json()
                 full_response = data.get("response", "")
             else:
-                full_response = "Error: Could not get response from Ollama"
+                full_response = f"Error: Could not get response. Status: {response.status_code}, Text: {response.text[:100]}"
             
             self.conversation_history.append({"role": "assistant", "content": full_response})
             return full_response
