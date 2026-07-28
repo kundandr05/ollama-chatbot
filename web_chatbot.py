@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify
 import requests
 import json
 from typing import Optional
+from duckduckgo_search import DDGS
 
 app = Flask(__name__)
 
@@ -37,16 +38,29 @@ class OllamaChatbot:
         except:
             return []
     
-    def chat(self, user_message: str) -> str:
+    def chat(self, user_message: str, use_web_search: bool = False) -> str:
         """Send message and get response."""
         self.conversation_history.append({"role": "user", "content": user_message})
         
         # Build context
         context = self._build_context()
         
+        # Optionally perform web search
+        web_context = ""
+        if use_web_search:
+            try:
+                results = DDGS().text(user_message, max_results=3)
+                if results:
+                    web_context = "Here is some live information from the web to help you answer:\n"
+                    for r in results:
+                        web_context += f"- {r.get('title', '')}: {r.get('body', '')}\n"
+                    web_context += "\n"
+            except Exception as e:
+                print(f"Web search error: {e}")
+        
         try:
             # Build full prompt including system message if set
-            full_prompt = context + user_message
+            full_prompt = context + web_context + user_message
             if self.system_prompt:
                 full_prompt = f"System: {self.system_prompt}\n\n{full_prompt}"
                 
@@ -118,11 +132,12 @@ def chat():
     """Handle chat messages."""
     data = request.json
     user_message = data.get('message', '').strip()
+    use_web_search = data.get('use_web_search', False)
     
     if not user_message:
         return jsonify({'error': 'Empty message'}), 400
     
-    response = chatbot.chat(user_message)
+    response = chatbot.chat(user_message, use_web_search)
     
     return jsonify({
         'user_message': user_message,

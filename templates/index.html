@@ -382,6 +382,52 @@
             40% { transform: scale(1); }
         }
 
+        .mic-btn {
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid var(--input-border);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+            min-width: auto;
+            padding: 0;
+        }
+
+        .mic-btn:hover {
+            background: #e0e0e0;
+            transform: scale(1.05);
+        }
+
+        .mic-btn.listening {
+            background: #ff6b6b;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        .speaker-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: transparent;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 16px;
+            opacity: 0.5;
+            transition: all 0.2s;
+        }
+
+        .speaker-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
         .error-message {
             background: #ffe0e0 !important;
             color: #d32f2f !important;
@@ -421,6 +467,13 @@
                 <input type="text" id="systemPrompt" class="persona-input" placeholder="e.g., You are a helpful AI expert..." onchange="updateSystemPrompt()">
             </div>
             
+            <div class="settings-group">
+                <label>
+                    <input type="checkbox" id="webSearchToggle" style="margin-right: 5px;">
+                    🌐 Web Search
+                </label>
+            </div>
+            
             <button class="clear-btn" onclick="clearChat()">Clear Chat</button>
         </div>
 
@@ -434,6 +487,7 @@
 
         <div class="input-container">
             <div class="input-wrapper">
+                <button class="mic-btn" id="micBtn" onclick="toggleRecording()" title="Voice Input">🎤</button>
                 <textarea 
                     class="input-field" 
                     id="messageInput" 
@@ -462,8 +516,70 @@
         const statusText = document.getElementById('statusText');
         const modelSelect = document.getElementById('modelSelect');
         const systemPrompt = document.getElementById('systemPrompt');
+        const webSearchToggle = document.getElementById('webSearchToggle');
+        const micBtn = document.getElementById('micBtn');
         
         let isLoading = false;
+
+        // Speech Recognition Setup
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        let isRecording = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                isRecording = true;
+                micBtn.classList.add('listening');
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                messageInput.value = transcript;
+                sendMessage();
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error', event.error);
+                isRecording = false;
+                micBtn.classList.remove('listening');
+            };
+
+            recognition.onend = () => {
+                isRecording = false;
+                micBtn.classList.remove('listening');
+            };
+        } else {
+            micBtn.style.display = 'none'; // Hide if not supported
+        }
+
+        function toggleRecording() {
+            if (!recognition) return;
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        // Voice Output Setup
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                // Stop any current speech
+                window.speechSynthesis.cancel();
+                
+                // Remove emojis and markdown formatting for cleaner speech
+                const cleanText = text.replace(/[\u1000-\uFFFF]/g, '').replace(/[#*`_]/g, '');
+                
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                utterance.rate = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
 
         // Dark Mode Logic
         function toggleTheme() {
@@ -593,7 +709,10 @@
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message })
+                    body: JSON.stringify({ 
+                        message: message,
+                        use_web_search: webSearchToggle.checked
+                    })
                 });
 
                 const data = await response.json();
@@ -658,6 +777,18 @@
                     copyBtn.onclick = () => copyText(copyBtn, code);
                     block.appendChild(copyBtn);
                 });
+
+                // Add speaker button
+                const speakerBtn = document.createElement('button');
+                speakerBtn.className = 'speaker-btn';
+                speakerBtn.innerHTML = '🔊';
+                speakerBtn.title = "Read aloud";
+                speakerBtn.onclick = () => speakText(text);
+                contentDiv.appendChild(speakerBtn);
+
+                // Auto-speak if it's a short response, or just speak by default
+                speakText(text);
+
             } else {
                 contentDiv.textContent = text;
             }
