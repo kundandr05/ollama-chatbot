@@ -518,7 +518,7 @@
                 
                 if (data.connected) {
                     statusDot.classList.add('connected');
-                    statusText.textContent = \`✓ Connected • \${data.current_model}\`;
+                    statusText.textContent = `✓ Connected • ${data.current_model}`;
                 } else {
                     statusDot.classList.remove('connected');
                     statusText.textContent = '✗ Disconnected - Check Ollama';
@@ -579,13 +579,13 @@
             // Show bounce animation
             const loadingDiv = document.createElement('div');
             loadingDiv.className = 'message bot-message';
-            loadingDiv.innerHTML = \`
+            loadingDiv.innerHTML = `
                 <div class="typing-indicator">
                     <div class="typing-dot"></div>
                     <div class="typing-dot"></div>
                     <div class="typing-dot"></div>
                 </div>
-            \`;
+            `;
             chatContainer.appendChild(loadingDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
@@ -627,7 +627,7 @@
 
         function addMessage(text, sender) {
             const messageDiv = document.createElement('div');
-            messageDiv.className = \`message \${sender}-message\`;
+            messageDiv.className = `message ${sender}-message`;
             
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
@@ -669,13 +669,13 @@
 
         async function clearChat() {
             if (confirm('Clear all messages?')) {
-                chatContainer.innerHTML = \`
+                chatContainer.innerHTML = `
                     <div class="message bot-message">
                         <div class="message-content">
                             👋 Chat cleared! How can I help you now?
                         </div>
                     </div>
-                \`;
+                `;
                 await fetch('/api/clear', { method: 'POST' });
             }
         }
